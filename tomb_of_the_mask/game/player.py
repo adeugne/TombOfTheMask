@@ -1,11 +1,12 @@
 import pygame
 import game.settings
-from game.level import is_wall, has_coin, collect_coin, is_exit, has_crystal, collect_crystal, has_spike
+from game.level import is_wall, has_coin, collect_coin, is_exit, has_crystal, collect_crystal, has_spike, has_life, collect_life
 
 class Player:
-    def __init__(self, row, col, current_lives=None):
+    def __init__(self, row, col, current_lives=None, game_scene=None):
         self.row = row
         self.col = col
+        self.game_scene = game_scene
         ts = game.settings.TILE_SIZE
         self.x = col * ts
         self.y = row * ts
@@ -24,16 +25,13 @@ class Player:
         self.invulnerable_timer = 0
 
     def take_damage(self):
-        """Логіка отримання шкоди"""
         if self.invulnerable_timer == 0:
             self.lives -= 1
-            self.invulnerable_timer = 60 
-        
+            self.invulnerable_timer = 60
+            if self.game_scene:
+                self.game_scene.play_damage_sound()
 
     def check_obstacle(self, r, c):
-        """
-        0 - вільно, 1 - стіна, 2 - шип
-        """
         if is_wall(r, c): return 1
         if has_spike(r, c): return 2
         return 0
@@ -58,6 +56,8 @@ class Player:
 
         self.is_moving = True
         self.on_exit = False
+        if self.game_scene:
+            self.game_scene.play_jump_sound()
 
     def update(self):
         ts = game.settings.TILE_SIZE
@@ -74,6 +74,23 @@ class Player:
 
         if has_crystal(current_row, current_col):
             collect_crystal(current_row, current_col)
+            if self.game_scene:
+                try:
+                    self.game_scene.play_krystal_sound()
+                except Exception:
+                    pass
+            
+        # ЗБІР ЖИТТЯ 
+        if has_life(current_row, current_col):
+            collect_life(current_row, current_col) # Сердечко зникає з карти
+            # Додаємо життя тільки якщо їх менше 3
+            if self.lives < 3:
+                self.lives += 1
+                if self.game_scene:
+                    try:
+                        self.game_scene.play_heart_sound()
+                    except Exception:
+                        pass
 
         if is_exit(current_row, current_col):
             self.on_exit = True

@@ -1,5 +1,6 @@
 ﻿import pygame
 import random
+import os
 import game.settings
 from game.player import Player
 from game.bat import Bat
@@ -17,11 +18,24 @@ class GameScene:
         self.default_tile_size = 40 
 
         self.levels_until_crystal = random.randint(5, 7)
+        # ЛІЧИЛЬНИК ДЛЯ ЖИТТЯ
+        self.levels_until_life = random.randint(7, 10)
+        
         self.waiting_to_start = True
         self.game_over = False
         self.total_coins = 0
         self.player = None
         self.bats = []
+        self.music_started = False
+        self.music_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+            "sounds",
+            "play.wav",
+        )
+        self.jump_sound = None
+        self.damage_sound = None
+        self._load_sounds()
+        self.prev_exit_open = False
 
         self.start_new_level()
 
@@ -51,14 +65,23 @@ class GameScene:
         level_module.ROWS = new_rows
         level_module.COLS = new_cols
 
+        # Логіка кристала
         spawn_crystal = False
         self.levels_until_crystal -= 1
         if self.levels_until_crystal <= 0:
             spawn_crystal = True
             self.levels_until_crystal = random.randint(5, 7)
+            
+        # ЛОГІКА ЖИТТЯ
+        spawn_life = False
+        self.levels_until_life -= 1
+        if self.levels_until_life <= 0:
+            spawn_life = True
+            self.levels_until_life = random.randint(7, 10)
 
+        # Передаємо spawn_life
         (level_module.LEVEL_MAP, level_module.SPAWN_ROW, level_module.SPAWN_COL) = \
-            generate_level(new_rows, new_cols, spawn_crystal=spawn_crystal)
+            generate_level(new_rows, new_cols, spawn_crystal=spawn_crystal, spawn_life=spawn_life)
 
         self.bats = []
         new_map = []
@@ -66,7 +89,6 @@ class GameScene:
             row_chars = list(row_str)
             for c, char in enumerate(row_chars):
                 if char == 'B':
-                    # 👇 Передаємо поточний рівень
                     self.bats.append(Bat(r, c, current_level=self.level_number))
                     row_chars[c] = '0' 
             new_map.append("".join(row_chars))
@@ -78,8 +100,10 @@ class GameScene:
         self.player = Player(
             level_module.SPAWN_ROW, 
             level_module.SPAWN_COL, 
-            current_lives=saved_lives
+            current_lives=saved_lives,
+            game_scene=self
         )
+        self.prev_exit_open = False
 
     def handle_event(self, event):
         if event.type == pygame.KEYDOWN:
@@ -87,16 +111,19 @@ class GameScene:
                 if event.key == pygame.K_RETURN:
                     self.__init__() 
                 elif event.key == pygame.K_ESCAPE:
+                    self._stop_music()
                     self.next_scene = "lobby"
                 return
 
             if event.key == pygame.K_ESCAPE:
+                self._stop_music()
                 self.next_scene = "lobby"
                 game.settings.TILE_SIZE = self.default_tile_size
             
             if self.waiting_to_start:
                 if event.key == pygame.K_RETURN:
                     self.waiting_to_start = False
+                    self._start_music()
                 return 
 
     def update(self, dt):
@@ -106,23 +133,129 @@ class GameScene:
         keys = pygame.key.get_pressed()
         self.player.handle_input(keys)
         self.player.update()
-        
+
         player_rect = pygame.Rect(self.player.x + 4, self.player.y + 4, 
                                   game.settings.TILE_SIZE - 8, game.settings.TILE_SIZE - 8)
-        
+
         for bat in self.bats:
             bat.update()
             if player_rect.colliderect(bat.rect):
                 self.player.take_damage()
 
-        if self.player.lives <= 0:
+        coins_current = sum(row.count("C") for row in level_module.LEVEL_MAP)
+        exit_open = (coins_current == 0)
+        if exit_open and not self.prev_exit_open:
+            try:
+                self.play_portal_sound()
+            except Exception:
+                pass
+        self.prev_exit_open = exit_open
+
+        if self.player.lives <= 0 and not self.game_over:
             self.game_over = True
+            try:
+                self.play_gameover_sound()
+            except Exception:
+                pass
 
         if self.player.on_exit:
             coins_left = any("C" in row for row in level_module.LEVEL_MAP)
             if not coins_left:
                 self.level_number += 1
                 self.start_new_level()
+
+    def _load_sounds(self):
+        """Load sound effects"""
+        jump_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+            "sounds",
+            "jump.mp3",
+        )
+        damage_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+            "sounds",
+            "damage.mp3",
+        )
+        portal_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+            "sounds",
+            "portal.mp3",
+        )
+        gameover_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+            "sounds",
+            "gameover.mp3",
+        )
+        heart_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+            "sounds",
+            "heart.mp3",
+        )
+        krystal_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+            "sounds",
+            "krystal.mp3",
+        )
+
+        if os.path.exists(jump_path):
+            self.jump_sound = pygame.mixer.Sound(jump_path)
+            self.jump_sound.set_volume(game.settings.SFX_VOLUME)
+        if os.path.exists(damage_path):
+            self.damage_sound = pygame.mixer.Sound(damage_path)
+            self.damage_sound.set_volume(game.settings.SFX_VOLUME)
+        if os.path.exists(portal_path):
+            self.portal_sound = pygame.mixer.Sound(portal_path)
+            self.portal_sound.set_volume(game.settings.SFX_VOLUME * 0.8)
+        if os.path.exists(gameover_path):
+            self.gameover_sound = pygame.mixer.Sound(gameover_path)
+            self.gameover_sound.set_volume(game.settings.SFX_VOLUME)
+        if os.path.exists(heart_path):
+            self.heart_sound = pygame.mixer.Sound(heart_path)
+            self.heart_sound.set_volume(game.settings.SFX_VOLUME)
+        if os.path.exists(krystal_path):
+            self.krystal_sound = pygame.mixer.Sound(krystal_path)
+            self.krystal_sound.set_volume(game.settings.SFX_VOLUME)
+
+    def play_jump_sound(self):
+        """Play jump sound effect"""
+        if self.jump_sound and not self.waiting_to_start and not self.game_over:
+            self.jump_sound.play()
+
+    def play_damage_sound(self):
+        """Play damage sound effect"""
+        if self.damage_sound and not self.waiting_to_start and not self.game_over:
+            self.damage_sound.play()
+
+    def play_portal_sound(self):
+        if hasattr(self, 'portal_sound') and self.portal_sound:
+            self.portal_sound.play()
+
+    def play_gameover_sound(self):
+        if hasattr(self, 'gameover_sound') and self.gameover_sound:
+            self.gameover_sound.play()
+
+    def play_heart_sound(self):
+        if hasattr(self, 'heart_sound') and self.heart_sound and not self.waiting_to_start and not self.game_over:
+            self.heart_sound.play()
+
+    def play_krystal_sound(self):
+        if hasattr(self, 'krystal_sound') and self.krystal_sound and not self.waiting_to_start and not self.game_over:
+            self.krystal_sound.play()
+
+    def _start_music(self):
+        if self.music_started:
+            return
+        if not os.path.exists(self.music_path):
+            return
+        pygame.mixer.music.load(self.music_path)
+        pygame.mixer.music.set_volume(game.settings.MUSIC_VOLUME)
+        pygame.mixer.music.play(-1)
+        self.music_started = True
+
+    def _stop_music(self):
+        if pygame.mixer.music.get_busy():
+            pygame.mixer.music.stop()
+        self.music_started = False
 
     def draw(self, screen):
         screen.fill((95, 95, 125))

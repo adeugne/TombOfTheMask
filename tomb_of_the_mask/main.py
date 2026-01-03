@@ -3,9 +3,14 @@ from game.settings import WIDTH, HEIGHT, FPS, TITLE
 from game.scenes.lobby import LobbyScene
 from game.scenes.game_scene import GameScene
 from game.scenes.shop import ShopScene
+from game.scenes.settings_scene import SettingsScene
 
 def main():
     pygame.init()
+    try:
+        pygame.mixer.init()
+    except Exception:
+        pass
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption(TITLE)
     clock = pygame.time.Clock()
@@ -14,6 +19,7 @@ def main():
         "lobby": LobbyScene,
         "game": GameScene,
         "shop": ShopScene,
+        "settings": SettingsScene,
     }
 
     current_scene = LobbyScene()

@@ -1,6 +1,7 @@
 import pygame
 import game.settings
 from game.settings import WIDTH, HEIGHT
+import os
 
 class LobbyScene:
     def __init__(self):
@@ -8,13 +9,58 @@ class LobbyScene:
         self.title_font = pygame.font.SysFont("arial", 48, bold=True)
         self.text_font = pygame.font.SysFont("arial", 28)
         self.ui_font = pygame.font.SysFont("arial", 24)
+        self.menu_items = [
+            ("START GAME", "game"),
+            ("SKINS SHOP", "shop"),
+            ("SETTINGS", "settings"),
+        ]
+        self.selected_index = 0
+        self.music_started = False
+        self.click = None
+        self.music_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+            "sounds",
+            "lobby.mp3",
+        )
+        self.click_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+            "sounds",
+            "klick.mp3",
+        )
+        try:
+            if os.path.exists(self.click_path):
+                self.click = pygame.mixer.Sound(self.click_path)
+                self.click.set_volume(game.settings.SFX_VOLUME)
+        except Exception:
+            self.click = None
+        self._start_music()
 
     def handle_event(self, event):
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_RETURN:
-                self.next_scene = "game"
-            if event.key == pygame.K_s:
-                self.next_scene = "shop"
+            if event.key == pygame.K_UP:
+                self.selected_index = (self.selected_index - 1) % len(self.menu_items)
+                try:
+                    if self.click:
+                        self.click.play()
+                except Exception:
+                    pass
+            elif event.key == pygame.K_DOWN:
+                self.selected_index = (self.selected_index + 1) % len(self.menu_items)
+                try:
+                    if self.click:
+                        self.click.play()
+                except Exception:
+                    pass
+            elif event.key == pygame.K_RETURN:
+                _, action = self.menu_items[self.selected_index]
+                if action == "game":
+                    self._stop_music()
+                try:
+                    if self.click:
+                        self.click.play()
+                except Exception:
+                    pass
+                self.next_scene = action
 
     def update(self, dt):
         pass
@@ -27,11 +73,20 @@ class LobbyScene:
         screen.blit(title_shadow, title_shadow.get_rect(center=(WIDTH // 2 + 3, HEIGHT // 2 - 37)))
         screen.blit(title, title.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 40)))
 
-        hint_start = self.text_font.render("[ ENTER ] START GAME", True, (220, 220, 220))
-        hint_shop = self.text_font.render("[ S ] OPEN SKINS SHOP", True, (255, 215, 0))
+        hint = self.text_font.render("ARROWS TO SELECT, ENTER TO START", True, (180, 180, 190))
+        screen.blit(hint, hint.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 20)))
 
-        screen.blit(hint_start, hint_start.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 50)))
-        screen.blit(hint_shop, hint_shop.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 100)))
+        base_y = HEIGHT // 2 + 70
+        for i, (label, _) in enumerate(self.menu_items):
+            is_selected = i == self.selected_index
+            color = (255, 215, 120) if is_selected else (220, 220, 220)
+            text = self.text_font.render(label, True, color)
+            x = WIDTH // 2
+            y = base_y + i * 40
+            screen.blit(text, text.get_rect(center=(x, y)))
+            if is_selected:
+                marker = self.text_font.render(">", True, (255, 215, 120))
+                screen.blit(marker, marker.get_rect(center=(x - 120, y)))
         self.draw_crystal_ui(screen)
 
     def draw_crystal_ui(self, screen):
@@ -59,3 +114,28 @@ class LobbyScene:
         pygame.draw.polygon(screen, (255, 255, 255), points, 2)
 
         screen.blit(text_surf, (x + 40, y + (box_height - text_surf.get_height()) // 2))
+
+    def _start_music(self):
+        if self.music_started:
+            return
+        try:
+            if pygame.mixer.music.get_busy():
+                return
+        except Exception:
+            pass
+        if not os.path.exists(self.music_path):
+            return
+        try:
+            pygame.mixer.music.load(self.music_path)
+            pygame.mixer.music.set_volume(game.settings.MUSIC_VOLUME)
+            pygame.mixer.music.play(-1)
+            self.music_started = True
+        except Exception:
+            pass
+    def _stop_music(self):
+        try:
+            if pygame.mixer.music.get_busy():
+                pygame.mixer.music.stop()
+        except Exception:
+            pass
+        self.music_started = False

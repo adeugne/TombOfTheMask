@@ -29,7 +29,7 @@ class Bat:
         self.axis = 'horizontal'
         self.flight_range = h_space
 
-        # 3. Швидкість (фіксована база 1.2)
+        # 3. Швидкість
         base_speed = 1.2
         range_bonus = 0.3 if self.flight_range > 8 else 0
         level_bonus = 0
@@ -40,7 +40,7 @@ class Bat:
         
         direction = random.choice([-1, 1])
         self.dx = final_speed * direction
-        self.dy = 0 # Вертикально не рухаємось
+        self.dy = 0 
             
         self.wing_state = 0
         self.animation_speed = 0.12
