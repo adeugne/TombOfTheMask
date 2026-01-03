@@ -1,7 +1,7 @@
 import pygame
 import random
 import game.settings
-from game.level import is_wall
+from game.level import is_wall, has_spike
 
 class Bat:
     def __init__(self, row, col, current_level=1):
@@ -59,7 +59,8 @@ class Bat:
         col_check = int(check_x / ts)
         row_check = int(self.y / ts)
         
-        if is_wall(row_check, col_check):
+        # Check for walls and lava
+        if is_wall(row_check, col_check) or has_spike(row_check, col_check):
             self.dx *= -1
         else:
             self.x = next_x
