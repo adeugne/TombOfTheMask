@@ -281,17 +281,15 @@ def generate_level(rows, cols, coin_count=10, spawn_crystal=False, spawn_life=Fa
             bat_spawn_chance = 0.85
             base_bat_count = 2 + ((current_level - 12) // 2)
         elif current_level == 15:
-            # Level 15: Always spawn bats
             bat_spawn_chance = 1.0
             base_bat_count = 4
         else:
-            # Level 16+: Almost guaranteed spawn with high counts
             bat_spawn_chance = 1.0
             growth_levels = current_level - 16
-            base_bat_count = 6 + (growth_levels * 2)  # Doubles the increase from level 16
+            base_bat_count = 6 + (growth_levels * 2) 
         
         if random.random() < bat_spawn_chance:
-            bat_count = min(20, base_bat_count + random.randint(2, 4))  # 20 is max from level 16+
+            bat_count = min(20, base_bat_count + random.randint(2, 4))  
         else:
             bat_count = max(3, base_bat_count - 1)
     else:
@@ -359,13 +357,10 @@ def generate_level(rows, cols, coin_count=10, spawn_crystal=False, spawn_life=Fa
             for _ in range(bat_count):
                 if not potential_bats: break
                 br, bc = potential_bats.pop()
-                
-                # Individual bat spawn probability (60-95% based on difficulty)
-                # This adds randomness to bat spawning while maintaining level passability
                 level_bonus = min(0.2, max(0, current_level - 15) * 0.02)
                 bat_individual_chance = min(0.98, 0.7 + (difficulty_tier * 0.08) + level_bonus)
                 if random.random() > bat_individual_chance:
-                    continue  # Skip spawning this bat
+                    continue 
                 
                 too_close = False
                 for (obr, obc) in placed_bats_pos:

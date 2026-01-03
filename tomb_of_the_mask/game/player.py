@@ -1,5 +1,6 @@
 import pygame
 import game.settings
+import game.level  # Імпортуємо модуль повністю, щоб бачити актуальний LEVEL_MAP
 from game.level import is_wall, has_coin, collect_coin, is_exit, has_crystal, collect_crystal, has_spike, has_life, collect_life
 
 class Player:
@@ -41,11 +42,12 @@ class Player:
         """Наносить шкоду, якщо немає загального імунітету (після удару)."""
         if self.invulnerable_timer == 0:
             self.lives -= 1
-            self.invulnerable_timer = 60 # 1 секунда невразливості після удару
+            # 30 кадрів = 0.5 секунди невразливості
+            self.invulnerable_timer = 30 
             if self.game_scene:
                 self.game_scene.play_damage_sound()
 
-    def set_lava_invulnerable(self, frames=120):
+    def set_lava_invulnerable(self, frames=30):
         """Вмикає захист від лави (наприклад, після телепортації)."""
         self.invulnerable_to_lava = frames
 
@@ -91,8 +93,6 @@ class Player:
     def update(self):
         ts = game.settings.TILE_SIZE
         
-        # Оновлення таймера після удару (миготіння) перенесено в update_timers,
-        # але для безпеки можна залишити і тут, якщо update_timers не викликається окремо
         if self.invulnerable_timer > 0:
             self.invulnerable_timer -= 1
 
@@ -156,7 +156,14 @@ class Player:
             
             # Удар об лаву при зупинці
             if obstacle == 2:
-                if self.invulnerable_to_lava <= 0:
+                # !!! НОВА ЛОГІКА !!!
+                # Перевіряємо, чи ми на зеленому порталі (всі монети зібрані)
+                # Якщо так - ігноруємо лаву, щоб встигнути перейти на новий рівень
+                coins_left = any("C" in row for row in game.level.LEVEL_MAP)
+                
+                if self.on_exit and not coins_left:
+                    pass # Ігноруємо урон, бо ми виходимо з рівня
+                elif self.invulnerable_to_lava <= 0:
                     self.take_damage()
 
     def draw(self, screen, offset_x, offset_y):
@@ -171,6 +178,8 @@ class Player:
             skin_color = game.settings.SKINS[current_idx]["color"]
         except IndexError:
             skin_color = (255, 220, 100) # Fallback color
+
+        # Відображення імунітету від порталу (біла рамка)
         if self.invulnerable_to_lava > 0:
             pygame.draw.rect(screen, (255, 255, 255), 
                            (offset_x + self.x - 2, offset_y + self.y - 2, ts + 4, ts + 4), 2)

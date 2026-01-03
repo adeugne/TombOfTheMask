@@ -33,7 +33,6 @@ def main():
                 running = False
             current_scene.handle_event(event)
 
-        # Check if current scene has exit_game flag
         if hasattr(current_scene, 'exit_game') and current_scene.exit_game:
             running = False
             continue
