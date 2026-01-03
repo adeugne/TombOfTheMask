@@ -23,6 +23,7 @@ class GameScene:
         
         self.waiting_to_start = True
         self.game_over = False
+        self.is_paused = False
         self.total_coins = 0
         self.player = None
         self.bats = []
@@ -36,6 +37,10 @@ class GameScene:
         self.damage_sound = None
         self._load_sounds()
         self.prev_exit_open = False
+        
+        # Load pause button sound
+        self.click_sound = None
+        self._load_click_sound()
 
         self.start_new_level()
 
@@ -79,9 +84,9 @@ class GameScene:
             spawn_life = True
             self.levels_until_life = random.randint(7, 10)
 
-        # Передаємо spawn_life
+        # Передаємо spawn_life та current_level для батів
         (level_module.LEVEL_MAP, level_module.SPAWN_ROW, level_module.SPAWN_COL) = \
-            generate_level(new_rows, new_cols, spawn_crystal=spawn_crystal, spawn_life=spawn_life)
+            generate_level(new_rows, new_cols, spawn_crystal=spawn_crystal, spawn_life=spawn_life, current_level=self.level_number)
 
         self.bats = []
         new_map = []
@@ -104,6 +109,9 @@ class GameScene:
             game_scene=self
         )
         self.prev_exit_open = False
+        # Protect from lava for 2 seconds (120 frames at 60 FPS) after portal transition
+        if saved_lives is not None:
+            self.player.set_lava_invulnerable(120)
 
     def handle_event(self, event):
         if event.type == pygame.KEYDOWN:
@@ -115,32 +123,46 @@ class GameScene:
                     self.next_scene = "lobby"
                 return
 
+            if self.is_paused:
+                if event.key == pygame.K_RETURN:
+                    self.is_paused = False
+                    self.play_click_sound()
+                return
+
             if event.key == pygame.K_ESCAPE:
                 self._stop_music()
                 self.next_scene = "lobby"
                 game.settings.TILE_SIZE = self.default_tile_size
             
+            if event.key == pygame.K_p:
+                self.is_paused = True
+                self.play_click_sound()
+            
             if self.waiting_to_start:
                 if event.key == pygame.K_RETURN:
                     self.waiting_to_start = False
                     self._start_music()
-                return 
-
+                return
+    
+    
     def update(self, dt):
-        if self.waiting_to_start or self.game_over:
+        if self.waiting_to_start or self.game_over or self.is_paused:
             return
 
         keys = pygame.key.get_pressed()
         self.player.handle_input(keys)
         self.player.update()
+        self.player.update_timers()
 
         player_rect = pygame.Rect(self.player.x + 4, self.player.y + 4, 
                                   game.settings.TILE_SIZE - 8, game.settings.TILE_SIZE - 8)
 
         for bat in self.bats:
             bat.update()
+            # Check collision with bat and apply damage
             if player_rect.colliderect(bat.rect):
                 self.player.take_damage()
+                # Optional: Add knockback or other effects here if needed
 
         coins_current = sum(row.count("C") for row in level_module.LEVEL_MAP)
         exit_open = (coins_current == 0)
@@ -161,8 +183,15 @@ class GameScene:
         if self.player.on_exit:
             coins_left = any("C" in row for row in level_module.LEVEL_MAP)
             if not coins_left:
+                # Portal is open (green) - protect from lava damage
+                self.player.set_lava_invulnerable(120)  # Protect for 2 seconds on next level
+                self.player.level_transitioning = True
                 self.level_number += 1
                 self.start_new_level()
+                self.player.level_transitioning = False
+            else:
+                # Portal is closed (orange) - can take lava damage
+                pass
 
     def _load_sounds(self):
         """Load sound effects"""
@@ -216,6 +245,17 @@ class GameScene:
             self.krystal_sound = pygame.mixer.Sound(krystal_path)
             self.krystal_sound.set_volume(game.settings.SFX_VOLUME)
 
+    def _load_click_sound(self):
+        """Load click sound for pause button"""
+        click_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+            "sounds",
+            "klick.mp3",
+        )
+        if os.path.exists(click_path):
+            self.click_sound = pygame.mixer.Sound(click_path)
+            self.click_sound.set_volume(game.settings.SFX_VOLUME)
+
     def play_jump_sound(self):
         """Play jump sound effect"""
         if self.jump_sound and not self.waiting_to_start and not self.game_over:
@@ -241,6 +281,11 @@ class GameScene:
     def play_krystal_sound(self):
         if hasattr(self, 'krystal_sound') and self.krystal_sound and not self.waiting_to_start and not self.game_over:
             self.krystal_sound.play()
+
+    def play_click_sound(self):
+        """Play click sound effect"""
+        if self.click_sound:
+            self.click_sound.play()
 
     def _start_music(self):
         if self.music_started:
@@ -284,13 +329,15 @@ class GameScene:
         heart_text = self.font.render(f"Lives: {'♥' * self.player.lives}", True, (255, 50, 50))
         screen.blit(heart_text, (15, 45))
 
-        hint = self.hint_font.render("LEAVE GAME - [ESC]", True, (200, 200, 200))
+        hint = self.hint_font.render("PAUSE - [P]  LEAVE GAME - [ESC]", True, (200, 200, 200))
         screen.blit(hint, hint.get_rect(center=(screen.get_width() // 2, screen.get_height() - 15)))
 
         if self.game_over:
             self.draw_game_over(screen)
         elif self.waiting_to_start:
             self.draw_popup(screen)
+        elif self.is_paused:
+            self.draw_pause_menu(screen)
 
     def draw_crystal_ui(self, screen):
         amount = game.settings.TOTAL_CRYSTALS
@@ -315,6 +362,10 @@ class GameScene:
 
     def draw_game_over(self, screen):
         self._draw_centered_box(screen, "ГРА ЗАВЕРШЕНА", "Життя скінчились :(", "[ ENTER ] Спочатку   [ ESC ] Меню", border_color=(255, 50, 50))
+
+    def draw_pause_menu(self, screen):
+        """Draw pause menu in the style of game over screen"""
+        self._draw_centered_box(screen, "ПАУЗА", "Гра на паузі", "[ ENTER ] Продовжити", border_color=(100, 150, 200))
 
     def _draw_centered_box(self, screen, title_txt, sub_txt, hint_txt, border_color=(255, 215, 0)):
         overlay = pygame.Surface(screen.get_size(), pygame.SRCALPHA)

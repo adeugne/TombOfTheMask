@@ -262,7 +262,7 @@ def generate_directed_maze(rows, cols, difficulty):
     return grid, start_pos
 
 
-def generate_level(rows, cols, coin_count=10, spawn_crystal=False, spawn_life=False):
+def generate_level(rows, cols, coin_count=10, spawn_crystal=False, spawn_life=False, current_level=1):
     rows = max(rows, 11)
     cols = max(cols, 9)
     if rows % 2 == 0: rows += 1
@@ -272,13 +272,15 @@ def generate_level(rows, cols, coin_count=10, spawn_crystal=False, spawn_life=Fa
     target_coins = 10 + (difficulty_tier * 3)
     spike_count = 3 + difficulty_tier * 2
     
-    if difficulty_tier >= 1:
-        bat_spawn_chance = min(0.95, 0.6 + (difficulty_tier * 0.08))
-        base_bat_count = 2 + difficulty_tier
+    # Bat spawn logic - very high base chance from level 12, growth starts at level 15
+    if current_level >= 12:
+        growth_levels = max(0, current_level - 15)
+        bat_spawn_chance = min(1.0, 0.98 + (growth_levels * 0.02))  # 98% base, grows after lvl 15
+        base_bat_count = 3 + ((current_level - 12) // 2)
         if random.random() < bat_spawn_chance:
-            bat_count = min(10, base_bat_count + 2)
+            bat_count = min(10, base_bat_count + 3)
         else:
-            bat_count = 0
+            bat_count = base_bat_count
     else:
         bat_count = 0
 
@@ -344,6 +346,13 @@ def generate_level(rows, cols, coin_count=10, spawn_crystal=False, spawn_life=Fa
             for _ in range(bat_count):
                 if not potential_bats: break
                 br, bc = potential_bats.pop()
+                
+                # Individual bat spawn probability (60-95% based on difficulty)
+                # This adds randomness to bat spawning while maintaining level passability
+                level_bonus = min(0.2, max(0, current_level - 15) * 0.02)
+                bat_individual_chance = min(0.98, 0.7 + (difficulty_tier * 0.08) + level_bonus)
+                if random.random() > bat_individual_chance:
+                    continue  # Skip spawning this bat
                 
                 too_close = False
                 for (obr, obc) in placed_bats_pos:

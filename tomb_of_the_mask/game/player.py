@@ -16,13 +16,25 @@ class Player:
         self.speed = ts / 4
         self.coins = 0
         self.on_exit = False
+        self.level_transitioning = False
+        # self.invulnerable_to_lava видалено з логіки зіткнень, 
+        # але змінну можна залишити, щоб не ламати game_scene
+        self.invulnerable_to_lava = 0 
     
         if current_lives is not None:
-            self.lives = current_lives
+            self._lives = current_lives
         else:
-            self.lives = game.settings.PLAYER_START_LIVES
+            self._lives = game.settings.PLAYER_START_LIVES
             
         self.invulnerable_timer = 0
+
+    @property
+    def lives(self):
+        return self._lives
+    
+    @lives.setter
+    def lives(self, value):
+        self._lives = max(0, value)
 
     def take_damage(self):
         if self.invulnerable_timer == 0:
@@ -31,10 +43,21 @@ class Player:
             if self.game_scene:
                 self.game_scene.play_damage_sound()
 
+    def set_lava_invulnerable(self, frames=120):
+        # Цей метод можна залишити порожнім або просто видалити логіку, 
+        # якщо ви хочете повністю прибрати цей ефект.
+        self.invulnerable_to_lava = frames
+
     def check_obstacle(self, r, c):
         if is_wall(r, c): return 1
         if has_spike(r, c): return 2
         return 0
+
+    def update_timers(self):
+        if self.invulnerable_timer > 0:
+            self.invulnerable_timer -= 1
+        if self.invulnerable_to_lava > 0:
+            self.invulnerable_to_lava -= 1
 
     def handle_input(self, keys):
         if self.is_moving: return
@@ -51,7 +74,10 @@ class Player:
         
         obstacle = self.check_obstacle(target_r, target_c)
         if obstacle != 0:
-            if obstacle == 2: self.take_damage()
+            # ВИПРАВЛЕНО: Прибрано перевірку invulnerable_to_lava
+            # Якщо це шип/лава (2) — наносимо урон одразу
+            if obstacle == 2:
+                self.take_damage()
             return
 
         self.is_moving = True
@@ -75,22 +101,20 @@ class Player:
         if has_crystal(current_row, current_col):
             collect_crystal(current_row, current_col)
             if self.game_scene:
-                try:
-                    self.game_scene.play_krystal_sound()
-                except Exception:
-                    pass
+                try: self.game_scene.play_krystal_sound()
+                except: pass
+
+        if has_spike(current_row, current_col):
+            # Тут теж можна прибрати захист, якщо гравець "застряг" у лаві
+            self.take_damage()
             
-        # ЗБІР ЖИТТЯ 
         if has_life(current_row, current_col):
-            collect_life(current_row, current_col) # Сердечко зникає з карти
-            # Додаємо життя тільки якщо їх менше 3
             if self.lives < 3:
+                collect_life(current_row, current_col)
                 self.lives += 1
                 if self.game_scene:
-                    try:
-                        self.game_scene.play_heart_sound()
-                    except Exception:
-                        pass
+                    try: self.game_scene.play_heart_sound()
+                    except: pass
 
         if is_exit(current_row, current_col):
             self.on_exit = True
@@ -123,6 +147,7 @@ class Player:
     def draw(self, screen, offset_x, offset_y):
         ts = game.settings.TILE_SIZE
         
+
         if self.invulnerable_timer > 0:
             if (self.invulnerable_timer // 4) % 2 == 0: return
 

@@ -6,6 +6,7 @@ import os
 class LobbyScene:
     def __init__(self):
         self.next_scene = None
+        self.exit_game = False  # Flag to exit the game
         self.title_font = pygame.font.SysFont("arial", 48, bold=True)
         self.text_font = pygame.font.SysFont("arial", 28)
         self.ui_font = pygame.font.SysFont("arial", 24)
@@ -37,6 +38,15 @@ class LobbyScene:
 
     def handle_event(self, event):
         if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                self.exit_game = True
+                try:
+                    if self.click:
+                        self.click.play()
+                except Exception:
+                    pass
+                return
+            
             if event.key == pygame.K_UP:
                 self.selected_index = (self.selected_index - 1) % len(self.menu_items)
                 try:
@@ -87,6 +97,11 @@ class LobbyScene:
             if is_selected:
                 marker = self.text_font.render(">", True, (255, 215, 120))
                 screen.blit(marker, marker.get_rect(center=(x - 120, y)))
+        
+        # Draw exit hint at the bottom
+        exit_hint = self.ui_font.render("PRESS ESC TO EXIT", True, (200, 200, 200))
+        screen.blit(exit_hint, exit_hint.get_rect(center=(WIDTH // 2, HEIGHT - 20)))
+        
         self.draw_crystal_ui(screen)
 
     def draw_crystal_ui(self, screen):
