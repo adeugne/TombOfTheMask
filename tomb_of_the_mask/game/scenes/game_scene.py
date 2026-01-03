@@ -109,9 +109,9 @@ class GameScene:
             game_scene=self
         )
         self.prev_exit_open = False
-        # Protect from lava for 2 seconds (120 frames at 60 FPS) after portal transition
+        # Protect from lava for 0.5 seconds (30 frames at 60 FPS) after portal transition
         if saved_lives is not None:
-            self.player.set_lava_invulnerable(120)
+            self.player.set_lava_invulnerable(30)
 
     def handle_event(self, event):
         if event.type == pygame.KEYDOWN:
@@ -184,7 +184,7 @@ class GameScene:
             coins_left = any("C" in row for row in level_module.LEVEL_MAP)
             if not coins_left:
                 # Portal is open (green) - protect from lava damage
-                self.player.set_lava_invulnerable(120)  # Protect for 2 seconds on next level
+                self.player.set_lava_invulnerable(30)  # Protect for 0.5 seconds on next level
                 self.player.level_transitioning = True
                 self.level_number += 1
                 self.start_new_level()
