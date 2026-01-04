@@ -6,7 +6,7 @@ import os
 class LobbyScene:
     def __init__(self):
         self.next_scene = None
-        self.exit_game = False  # Flag to exit the game
+        self.exit_game = False 
         self.title_font = pygame.font.SysFont("arial", 48, bold=True)
         self.text_font = pygame.font.SysFont("arial", 28)
         self.ui_font = pygame.font.SysFont("arial", 24)
@@ -19,20 +19,16 @@ class LobbyScene:
         self.music_started = False
         self.click = None
         self.music_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-            "sounds",
-            "lobby.mp3",
+            game.settings.SOUNDS_PATH, "lobby.mp3",
         )
         self.click_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-            "sounds",
-            "klick.mp3",
+            game.settings.SOUNDS_PATH, "klick.mp3"
         )
         try:
             if os.path.exists(self.click_path):
                 self.click = pygame.mixer.Sound(self.click_path)
                 self.click.set_volume(game.settings.SFX_VOLUME)
-        except Exception:
+        except pygame.error:
             self.click = None
         self._start_music()
 
@@ -43,7 +39,7 @@ class LobbyScene:
                 try:
                     if self.click:
                         self.click.play()
-                except Exception:
+                except pygame.error:
                     pass
                 return
             
@@ -52,14 +48,14 @@ class LobbyScene:
                 try:
                     if self.click:
                         self.click.play()
-                except Exception:
+                except pygame.error:
                     pass
             elif event.key == pygame.K_DOWN:
                 self.selected_index = (self.selected_index + 1) % len(self.menu_items)
                 try:
                     if self.click:
                         self.click.play()
-                except Exception:
+                except pygame.error:
                     pass
             elif event.key == pygame.K_RETURN:
                 _, action = self.menu_items[self.selected_index]
@@ -68,7 +64,7 @@ class LobbyScene:
                 try:
                     if self.click:
                         self.click.play()
-                except Exception:
+                except pygame.error:
                     pass
                 self.next_scene = action
 
@@ -97,8 +93,7 @@ class LobbyScene:
             if is_selected:
                 marker = self.text_font.render(">", True, (255, 215, 120))
                 screen.blit(marker, marker.get_rect(center=(x - 120, y)))
-        
-        # Draw exit hint at the bottom
+
         exit_hint = self.ui_font.render("PRESS ESC TO EXIT", True, (200, 200, 200))
         screen.blit(exit_hint, exit_hint.get_rect(center=(WIDTH // 2, HEIGHT - 20)))
         
@@ -136,7 +131,7 @@ class LobbyScene:
         try:
             if pygame.mixer.music.get_busy():
                 return
-        except Exception:
+        except pygame.error:
             pass
         if not os.path.exists(self.music_path):
             return
@@ -145,12 +140,12 @@ class LobbyScene:
             pygame.mixer.music.set_volume(game.settings.MUSIC_VOLUME)
             pygame.mixer.music.play(-1)
             self.music_started = True
-        except Exception:
+        except pygame.error:
             pass
     def _stop_music(self):
         try:
             if pygame.mixer.music.get_busy():
                 pygame.mixer.music.stop()
-        except Exception:
+        except pygame.error:
             pass
         self.music_started = False

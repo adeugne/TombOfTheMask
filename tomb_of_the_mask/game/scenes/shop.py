@@ -13,53 +13,38 @@ class ShopScene:
         self.selected_index = game.settings.CURRENT_SKIN_INDEX
         self.scroll_offset = 0
         music_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-            "sounds",
-            "lobby.mp3",
+            game.settings.SOUNDS_PATH, "lobby.mp3",
         )
         try:
             if os.path.exists(music_path) and not pygame.mixer.music.get_busy():
                 pygame.mixer.music.load(music_path)
                 pygame.mixer.music.set_volume(game.settings.MUSIC_VOLUME)
                 pygame.mixer.music.play(-1)
-        except Exception:
-            pass
-        self.click = None
+        except pygame.error:
+            self.click = None
         click_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-            "sounds",
-            "klick.mp3",
+            game.settings.SOUNDS_PATH, "klick.mp3",
         )
         try:
             if os.path.exists(click_path):
                 self.click = pygame.mixer.Sound(click_path)
                 self.click.set_volume(game.settings.SFX_VOLUME)
-        except Exception:
+        except pygame.error:
             self.click = None
+
 
     def handle_event(self, event):
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
                 self.next_scene = "lobby"
             
-            if event.key == pygame.K_UP:
-                self.selected_index -= 1
-                if self.selected_index < 0:
-                    self.selected_index = len(game.settings.SKINS) - 1
+            if event.key == pygame.K_DOWN or event.key == pygame.K_UP:
+                direction = 1 if event.key == pygame.K_DOWN else -1
+                self.selected_index = (self.selected_index + direction) % len(game.settings.SKINS)
                 try:
                     if self.click:
                         self.click.play()
-                except Exception:
-                    pass
-            
-            if event.key == pygame.K_DOWN:
-                self.selected_index += 1
-                if self.selected_index >= len(game.settings.SKINS):
-                    self.selected_index = 0
-                try:
-                    if self.click:
-                        self.click.play()
-                except Exception:
+                except (AttributeError, pygame.error):
                     pass
 
             if event.key == pygame.K_RETURN:
@@ -67,8 +52,9 @@ class ShopScene:
                 try:
                     if self.click:
                         self.click.play()
-                except Exception:
+                except (AttributeError, pygame.error):
                     pass
+
 
     def try_buy_or_equip(self):
         skin = game.settings.SKINS[self.selected_index]

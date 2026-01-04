@@ -17,28 +17,24 @@ class SettingsScene:
         self.step = 0.05
         import os
         music_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-            "sounds",
-            "lobby.mp3",
+            game.settings.SOUNDS_PATH, "lobby.mp3",
         )
         try:
             if os.path.exists(music_path) and not pygame.mixer.music.get_busy():
                 pygame.mixer.music.load(music_path)
                 pygame.mixer.music.set_volume(game.settings.MUSIC_VOLUME)
                 pygame.mixer.music.play(-1)
-        except Exception:
+        except pygame.error:
             pass
         self.click = None
         try:
             click_path = os.path.join(
-                os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-                "sounds",
-                "klick.mp3",
+                game.settings.SOUNDS_PATH, "klick.mp3"
             )
             if os.path.exists(click_path):
                 self.click = pygame.mixer.Sound(click_path)
                 self.click.set_volume(game.settings.SFX_VOLUME)
-        except Exception:
+        except pygame.error:
             self.click = None
 
     def handle_event(self, event):
@@ -51,28 +47,28 @@ class SettingsScene:
                 try:
                     if self.click:
                         self.click.play()
-                except Exception:
+                except pygame.error:
                     pass
             elif event.key == pygame.K_DOWN:
                 self.selected_index = (self.selected_index + 1) % len(self.menu_items)
                 try:
                     if self.click:
                         self.click.play()
-                except Exception:
+                except pygame.error:
                     pass
             elif event.key == pygame.K_LEFT:
                 self._adjust_value(-self.step)
                 try:
                     if self.click:
                         self.click.play()
-                except Exception:
+                except pygame.error:
                     pass
             elif event.key == pygame.K_RIGHT:
                 self._adjust_value(self.step)
                 try:
                     if self.click:
                         self.click.play()
-                except Exception:
+                except pygame.error:
                     pass
             elif event.key == pygame.K_RETURN:
                 _, action = self.menu_items[self.selected_index]
@@ -81,7 +77,7 @@ class SettingsScene:
                     try:
                         if self.click:
                             self.click.play()
-                    except Exception:
+                    except pygame.error:
                         pass
 
     def _adjust_value(self, delta):
@@ -90,14 +86,14 @@ class SettingsScene:
             game.settings.MUSIC_VOLUME = self._clamp(game.settings.MUSIC_VOLUME + delta, max_val=0.25)
             try:
                 pygame.mixer.music.set_volume(game.settings.MUSIC_VOLUME)
-            except Exception:
+            except pygame.error:
                 pass
         elif action == "sfx_volume":
             game.settings.SFX_VOLUME = self._clamp(game.settings.SFX_VOLUME + delta, max_val=0.25)
             try:
                 if self.click:
                     self.click.set_volume(game.settings.SFX_VOLUME)
-            except Exception:
+            except pygame.error:
                 pass
 
     def _clamp(self, value, max_val=1.0):

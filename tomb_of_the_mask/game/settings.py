@@ -1,3 +1,5 @@
+import os
+
 WIDTH, HEIGHT = 480, 750
 FPS = 60
 
@@ -26,3 +28,6 @@ SKINS = [
     {"name": "GOLDEN",    "price": 20,  "color": (255, 215, 0)},
     {"name": "DARKNESS",  "price": 35,  "color": (50, 50, 50)},
 ]
+
+ROOT_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SOUNDS_PATH = os.path.join(ROOT_PATH, "sounds")

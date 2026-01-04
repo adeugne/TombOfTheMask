@@ -272,17 +272,20 @@ def generate_level(rows, cols, coin_count=10, spawn_crystal=False, spawn_life=Fa
     target_coins = 10 + (difficulty_tier * 3)
     spike_count = 3 + difficulty_tier * 2
     
+
+
     # Bat spawn logic - very high base chance from level 12, aggressive growth from level 15, almost guaranteed from level 16
-    if current_level >= 12:
+    if current_level >= 1:
         # From level 12-14: 85% base chance
         # From level 15: 100% guaranteed spawn, with increasing count
         # From level 16+: Almost always spawn (very high count guarantee)
         if current_level < 15:
-            bat_spawn_chance = 0.85
-            base_bat_count = 2 + ((current_level - 12) // 2)
+            bat_spawn_chance = 1
+            base_bat_count = 2 
+            # + ((current_level - 12) // 2)
         elif current_level == 15:
             bat_spawn_chance = 1.0
-            base_bat_count = 4
+            base_bat_count = 2
         else:
             bat_spawn_chance = 1.0
             growth_levels = current_level - 16
@@ -294,6 +297,7 @@ def generate_level(rows, cols, coin_count=10, spawn_crystal=False, spawn_life=Fa
             bat_count = max(3, base_bat_count - 1)
     else:
         bat_count = 0
+
 
     max_attempts = 2000
 
